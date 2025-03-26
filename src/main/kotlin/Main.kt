@@ -164,7 +164,7 @@ fun DrawScope.drawRobot(robot: Robot) {
 }
 
 /**
- * @return a list of 4 distances, going left top right bottom
+ * @return a list of 4 distances, going counterclockwise
  */
 fun calculateDistances(robot: Robot): List<Float> {
     val fieldSize = Size(156f, 156f)
@@ -186,7 +186,7 @@ fun calculateDistances(robot: Robot): List<Float> {
         val top = fieldSize.height / 2 - relativeRobot.y
         val bottom = -fieldSize.height / 2 - relativeRobot.y
 
-        return listOf(left, right, top, bottom).map { abs(it) }
+        return listOf(right, top, left, bottom).map { abs(it) }
     }
 
     val left = Line(topLeft, bottomLeft)
@@ -194,17 +194,28 @@ fun calculateDistances(robot: Robot): List<Float> {
     val top = Line(topLeft, topRight)
     val bottom = Line(bottomLeft, bottomRight)
 
-    val walls = listOf(right, top, left, bottom).zipWithNext() + (top to left)
-    val startingPossible = (robot.theta.normalize360().toDegrees() / 90).toInt()
-    val possibleLeft = walls[startingPossible]
-    val possibleTop = walls[(startingPossible + 1) % 4]
-    val possibleRight = walls[(startingPossible + 2) % 4]
-    val possibleBottom = walls[(startingPossible + 3) % 4]
+    val horizontalDistances =
+        listOf(left, right, top, bottom)
+            .map {
+                Offset((relativeRobot.y - it.intercept) / it.slope, relativeRobot.y)
+            }.map { it.x - relativeRobot.x }
 
-    return listOf()
+    val verticalDistances =
+        listOf(left, right, top, bottom)
+            .map {
+                Offset(relativeRobot.x, it.slope * relativeRobot.x + it.intercept)
+            }.map { it.y - relativeRobot.y }
+
+    val leftDistance = horizontalDistances.filter { it < 0 }.minOfOrNull { abs(it) } ?: 0f
+    val rightDistance = horizontalDistances.filter { it > 0 }.minOfOrNull { abs(it) } ?: 0f
+    val topDistance = verticalDistances.filter { it > 0 }.minOfOrNull { abs(it) } ?: 0f
+    val bottomDistance = verticalDistances.filter { it < 0 }.minOfOrNull { abs(it) } ?: 0f
+
+    return listOf(rightDistance, topDistance, leftDistance, bottomDistance)
 }
 
 fun DrawScope.drawDistances(distances: List<Float>) {
+    println(distances)
 }
 
 fun main() =
