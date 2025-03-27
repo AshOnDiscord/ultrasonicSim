@@ -96,9 +96,10 @@ fun app() {
                 translate(left = size.width / 2, top = size.height / 2)
             }) {
                 drawField()
-                drawRobot(robot)
                 val distances = calculateDistances(robot)
-                drawDistances(distances)
+                drawDistances(robot, distances)
+                calculatePose(robot.theta, distances)
+                drawRobot(robot)
             }
         }
     }
@@ -167,7 +168,7 @@ fun DrawScope.drawRobot(robot: Robot) {
  * @return a list of 4 distances, going counterclockwise
  */
 fun calculateDistances(robot: Robot): List<Float> {
-    val fieldSize = Size(156f, 156f)
+    val fieldSize = Size(144f, 144f)
 
     val relativeRobot =
         Robot(
@@ -214,7 +215,44 @@ fun calculateDistances(robot: Robot): List<Float> {
     return listOf(rightDistance, topDistance, leftDistance, bottomDistance)
 }
 
-fun DrawScope.drawDistances(distances: List<Float>) {
+fun calculatePose(
+    theta: Float,
+    distances: List<Float>,
+) {
+}
+
+fun DrawScope.drawDistances(
+    robot: Robot,
+    distances: List<Float>,
+) {
+    translate(left = robot.x, top = robot.y) {
+        rotate(degrees = Math.toDegrees(robot.theta.toDouble()).toFloat(), pivot = Offset(0f, 0f)) {
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(distances[0], 0f),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(0f, distances[1]),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(-distances[2], 0f),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(0f, -distances[3]),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+            )
+        }
+    }
     println(distances)
 }
 
