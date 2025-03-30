@@ -27,3 +27,12 @@ fun Offset.rotate(theta: Float = 0f): Offset =
     )
 
 fun Offset.distanceTo(other: Offset) = sqrt((other.x - x).pow(2) + (other.y - y).pow(2))
+
+fun Offset.coerceIn(
+    min: Offset,
+    max: Offset,
+): Offset =
+    Offset(
+        x = x.coerceIn(min.x, max.x),
+        y = y.coerceIn(min.y, max.y),
+    )
