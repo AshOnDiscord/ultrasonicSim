@@ -76,7 +76,7 @@ fun app() {
             ),
         )
     }
-    val useObstacle = false
+    val useObstacle = true
 
     MaterialTheme {
         Canvas(
@@ -254,33 +254,37 @@ fun DrawScope.drawDistances(
 ) {
     translate(left = robot.x, top = robot.y) {
         rotate(degrees = Math.toDegrees(robot.theta.toDouble()).toFloat(), pivot = Offset(0f, 0f)) {
-//            drawLine(
-//                start = Offset(0f, 0f),
-//                end = Offset(distances[0], 0f),
-//                color = Color.Green,
-//                strokeWidth = 1f.dp.toPx(),
-//            )
-//            drawLine(
-//                start = Offset(0f, 0f),
-//                end = Offset(0f, distances[1]),
-//                color = Color.Green,
-//                strokeWidth = 1f.dp.toPx(),
-//            )
-//            drawLine(
-//                start = Offset(0f, 0f),
-//                end = Offset(-distances[2], 0f),
-//                color = Color.Green,
-//                strokeWidth = 1f.dp.toPx(),
-//            )
-//            drawLine(
-//                start = Offset(0f, 0f),
-//                end = Offset(0f, -distances[3]),
-//                color = Color.Green,
-//                strokeWidth = 1f.dp.toPx(),
-//            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(distances[0], 0f),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+                alpha = .5f,
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(0f, distances[1]),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+                alpha = .5f,
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(-distances[2], 0f),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+                alpha = .5f,
+            )
+            drawLine(
+                start = Offset(0f, 0f),
+                end = Offset(0f, -distances[3]),
+                color = Color.Green,
+                strokeWidth = 1f.dp.toPx(),
+                alpha = .5f,
+            )
         }
     }
-//    println(distances)
+    println(distances)
 }
 
 fun DrawScope.calculatePose(
@@ -333,60 +337,6 @@ fun DrawScope.calculatePose(
             )
         }
 
-//    println(startingPossible)
-
-//    drawRect(
-//        color = Color.Red,
-//        topLeft = newFront[0].topLeft,
-//        size = newFront[0].size,
-//        alpha = .25f,
-//    )
-//    drawRect(
-//        color = Color.Red,
-//        topLeft = newFront[1].topLeft,
-//        size = newFront[1].size,
-//        alpha = .25f,
-//    )
-//
-//    drawRect(
-//        color = Color.Blue,
-//        topLeft = newLeft[0].topLeft,
-//        size = newLeft[0].size,
-//        alpha = .25f,
-//    )
-//    drawRect(
-//        color = Color.Blue,
-//        topLeft = newLeft[1].topLeft,
-//        size = newLeft[1].size,
-//        alpha = .25f,
-//    )
-//
-//    drawRect(
-//        color = Color.Green,
-//        topLeft = newBack[0].topLeft,
-//        size = newBack[0].size,
-//        alpha = .25f,
-//    )
-//    drawRect(
-//        color = Color.Green,
-//        topLeft = newBack[1].topLeft,
-//        size = newBack[1].size,
-//        alpha = .25f,
-//    )
-//
-//    drawRect(
-//        color = Color.Yellow,
-//        topLeft = newRight[0].topLeft,
-//        size = newRight[0].size,
-//        alpha = .25f,
-//    )
-//    drawRect(
-//        color = Color.Yellow,
-//        topLeft = newRight[1].topLeft,
-//        size = newRight[1].size,
-//        alpha = .25f,
-//    )
-
     val overlapsFL = newFront[0].intersections(newLeft) + newFront[1].intersections(newLeft)
     val overlapsFLB = overlapsFL.map { it.intersections(newBack) }.flatten()
     val overlapsFLBR = overlapsFLB.map { it.intersections(newRight) }.flatten()
@@ -403,8 +353,8 @@ fun DrawScope.calculatePose(
     val result =
         if (overlapsFLBR.size > 1) {
             overlapsFLBR[0].intersections(overlapsFLBR.drop(1)).getOrNull(0)?.center ?: Offset.Zero
-        } else if (overlapsFLBR.size < 0) {
-            println("ERROR ${overlapsFLBR.size}")
+        } else if (overlapsFLBR.isEmpty()) {
+            println("ERROR no intersections")
             Offset.Zero
         } else {
             overlapsFLBR[0].center
