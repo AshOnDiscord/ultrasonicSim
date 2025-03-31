@@ -27,6 +27,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.singleWindowApplication
+import util.LineSegment
+import util.Ray
+import util.Rectangle
+import util.RectangularArea
+import util.angleTo
+import util.coerceIn
+import util.distanceTo
+import util.normalize360
+import util.rotate
+import util.toDegrees
+import util.toFieldCoords
+import util.toRadians
 import kotlin.math.PI
 
 data class Robot(
@@ -55,7 +67,16 @@ data class Robot(
 @Preview
 fun app() {
     var robot by remember { mutableStateOf(Robot(x = 0f, y = 0f, theta = 0f)) }
-    var obstacle by remember { mutableStateOf(Rectangle(center = Offset(36f, 12f), size = Size(18f, 18f), theta = 22.5f.toRadians())) }
+    var obstacle by remember {
+        mutableStateOf(
+            Rectangle(
+                center = Offset(36f, 12f),
+                size = Size(18f, 18f),
+                theta = 22.5f.toRadians(),
+            ),
+        )
+    }
+    val useObstacle = false
 
     MaterialTheme {
         Canvas(
@@ -115,12 +136,14 @@ fun app() {
                 translate(left = size.width / 2, top = size.height / 2)
             }) {
                 drawField()
-                val distances = calculateDistances(robot, listOf(obstacle))
+                val distances = calculateDistances(robot, if (useObstacle) listOf(obstacle) else emptyList())
                 drawDistances(robot, distances)
-//                val pose = calculatePose(robot.theta, distances, robot.position)
-//                print("(${pose.x} ${pose.y}) (${robot.x} ${robot.y})")
                 drawRobot(robot)
-                drawRobot(Robot(obstacle.center, obstacle.theta))
+                if (useObstacle) drawRobot(Robot(obstacle.center, obstacle.theta))
+                val pose = calculatePose(robot.theta, distances, robot.position)
+                if (pose.distanceTo(robot.position) > 1f) {
+                    println("(${pose.x} ${pose.y}) (${robot.x} ${robot.y}) | ${pose.distanceTo(robot.position)}")
+                }
             }
         }
     }
@@ -153,18 +176,20 @@ fun DrawScope.drawField() {
 }
 
 fun DrawScope.drawRobot(robot: Robot) {
+    val robotSize = Size(16f.dp.toPx(), 16f.dp.toPx())
+
     translate(left = robot.x, top = robot.y) {
         rotate(degrees = Math.toDegrees(robot.theta.toDouble()).toFloat(), pivot = Offset(0f, 0f)) {
             drawRect(
                 color = Color.Red,
                 alpha = 0.5f,
-                topLeft = Offset(-10f, -10f),
-                size = Size(20.dp.toPx(), 20.dp.toPx()),
+                topLeft = Offset(-robotSize.width, -robotSize.height) / 2f,
+                size = robotSize,
             )
             drawRect(
                 color = Color.Red,
-                topLeft = Offset(-10f, -10f),
-                size = Size(20.dp.toPx(), 20.dp.toPx()),
+                topLeft = Offset(-robotSize.width, -robotSize.height) / 2f,
+                size = robotSize,
                 style =
                     Stroke(
                         width = 1f.dp.toPx(),
@@ -178,7 +203,7 @@ fun DrawScope.drawRobot(robot: Robot) {
             drawLine(
                 color = Color.Blue,
                 start = Offset(0f, 0f),
-                end = Offset(10.5.dp.toPx(), 0.dp.toPx()),
+                end = Offset(robotSize.width / 2 + 0.5.dp.toPx(), 0.dp.toPx()),
                 strokeWidth = 1f.dp.toPx(),
             )
         }
@@ -188,7 +213,7 @@ fun DrawScope.drawRobot(robot: Robot) {
 /**
  * @return a list of 4 distances, going counterclockwise
  */
-fun DrawScope.calculateDistances(
+fun calculateDistances(
     robot: Robot,
     obstacles: List<Rectangle>,
 ): List<Float> {
@@ -229,107 +254,164 @@ fun DrawScope.drawDistances(
 ) {
     translate(left = robot.x, top = robot.y) {
         rotate(degrees = Math.toDegrees(robot.theta.toDouble()).toFloat(), pivot = Offset(0f, 0f)) {
-            drawLine(
-                start = Offset(0f, 0f),
-                end = Offset(distances[0], 0f),
-                color = Color.Green,
-                strokeWidth = 1f.dp.toPx(),
-            )
-            drawLine(
-                start = Offset(0f, 0f),
-                end = Offset(0f, distances[1]),
-                color = Color.Green,
-                strokeWidth = 1f.dp.toPx(),
-            )
-            drawLine(
-                start = Offset(0f, 0f),
-                end = Offset(-distances[2], 0f),
-                color = Color.Green,
-                strokeWidth = 1f.dp.toPx(),
-            )
-            drawLine(
-                start = Offset(0f, 0f),
-                end = Offset(0f, -distances[3]),
-                color = Color.Green,
-                strokeWidth = 1f.dp.toPx(),
-            )
+//            drawLine(
+//                start = Offset(0f, 0f),
+//                end = Offset(distances[0], 0f),
+//                color = Color.Green,
+//                strokeWidth = 1f.dp.toPx(),
+//            )
+//            drawLine(
+//                start = Offset(0f, 0f),
+//                end = Offset(0f, distances[1]),
+//                color = Color.Green,
+//                strokeWidth = 1f.dp.toPx(),
+//            )
+//            drawLine(
+//                start = Offset(0f, 0f),
+//                end = Offset(-distances[2], 0f),
+//                color = Color.Green,
+//                strokeWidth = 1f.dp.toPx(),
+//            )
+//            drawLine(
+//                start = Offset(0f, 0f),
+//                end = Offset(0f, -distances[3]),
+//                color = Color.Green,
+//                strokeWidth = 1f.dp.toPx(),
+//            )
         }
     }
-    println(distances)
+//    println(distances)
 }
 
-// fun DrawScope.calculatePose(
-//    theta: Float,
-//    distances: List<Float>,
-//    robotPosition: Offset,
-// ): Offset {
-//    val fieldSize = Size(144f, 144f)
-//
-//    val topLeft = Offset(-fieldSize.width / 2, fieldSize.height / 2).rotate(-theta)
-//    val topRight = Offset(fieldSize.width / 2, fieldSize.height / 2).rotate(-theta)
-//    val bottomLeft = Offset(-fieldSize.width / 2, -fieldSize.height / 2).rotate(-theta)
-//    val bottomRight = Offset(fieldSize.width / 2, -fieldSize.height / 2).rotate(-theta)
-//
-//    val left = LineSegment(topLeft, bottomLeft)
-//    val right = LineSegment(topRight, bottomRight)
-//    val top = LineSegment(topLeft, topRight)
-//    val bottom = LineSegment(bottomLeft, bottomRight)
-//
-//    val walls = listOf(right, top, left, bottom).zipWithNext() + (top to left)
-//    val startingPossible = (theta.normalize360().toDegrees() / 90).toInt()
-//    val possibleFront = walls[startingPossible].toList()
-//    val possibleLeft = walls[(startingPossible + 1) % 4].toList()
-//    val possibleBack = walls[(startingPossible + 2) % 4].toList()
-//    val possibleRight = walls[(startingPossible + 3) % 4].toList()
-//
-//    val newFront = possibleFront.map { it.translate(Offset(distances[0], 0f)) }
-//    val newBack = possibleBack.map { it.translate(Offset(distances[2], 0f)) }
-//    val newLeft = possibleLeft.map { it.translate(Offset(0f, distances[1])) }
-//    val newRight = possibleRight.map { it.translate(Offset(0f, distances[3])) }
-//
+fun DrawScope.calculatePose(
+    theta: Float,
+    distances: List<Float>,
+    robotPosition: Offset,
+): Offset {
+    val fieldSize = Size(144f, 144f)
+    val left = LineSegment(Offset(-1f, 1f), Offset(-1f, -1f)) * (fieldSize / 2f)
+    val right = LineSegment(Offset(1f, 1f), Offset(1f, -1f)) * (fieldSize / 2f)
+    val top = LineSegment(Offset(-1f, 1f), Offset(1f, 1f)) * (fieldSize / 2f)
+    val bottom = LineSegment(Offset(-1f, -1f), Offset(1f, -1f)) * (fieldSize / 2f)
+
+    val walls = listOf(right, top, left, bottom).zipWithNext() + (bottom to right)
+
+    val startingPossible = (theta.normalize360().toDegrees() / 90).toInt()
+    val possibleFront = walls[startingPossible].toList()
+    val possibleLeft = walls[(startingPossible + 1) % 4].toList()
+    val possibleBack = walls[(startingPossible + 2) % 4].toList()
+    val possibleRight = walls[(startingPossible + 3) % 4].toList()
+
+    val sensorArea = 2f
+
+    val newFront =
+        possibleFront.map {
+            RectangularArea.fromLineSegment(
+                it.translate(Offset(distances[0], 0f).rotate(180f.toRadians() + theta)),
+                sensorArea,
+            )
+        }
+    val newLeft =
+        possibleLeft.map {
+            RectangularArea.fromLineSegment(
+                it.translate(Offset(distances[1], 0f).rotate(270f.toRadians() + theta)),
+                sensorArea,
+            )
+        }
+    val newBack =
+        possibleBack.map {
+            RectangularArea.fromLineSegment(
+                it.translate(Offset(distances[2], 0f).rotate(theta)),
+                sensorArea,
+            )
+        }
+    val newRight =
+        possibleRight.map {
+            RectangularArea.fromLineSegment(
+                it.translate(Offset(distances[3], 0f).rotate(90f.toRadians() + theta)),
+                sensorArea,
+            )
+        }
+
 //    println(startingPossible)
-//    rotate(theta.toDegrees(), pivot = Offset(0f, 0f)) {
-//        possibleFront.forEach {
-//            drawLine(
-//                start = Offset(-72f, -72f * it.slope + it.intercept),
-//                end = Offset(72f, 72f * it.slope + it.intercept),
-//                color = Color.Red,
-//                strokeWidth = 2f,
-//            )
-//        }
-//        println(possibleFront)
-//    }
+
+//    drawRect(
+//        color = Color.Red,
+//        topLeft = newFront[0].topLeft,
+//        size = newFront[0].size,
+//        alpha = .25f,
+//    )
+//    drawRect(
+//        color = Color.Red,
+//        topLeft = newFront[1].topLeft,
+//        size = newFront[1].size,
+//        alpha = .25f,
+//    )
 //
-//    return findEstimate(newLeft, newFront, newRight, newBack)
-// }
+//    drawRect(
+//        color = Color.Blue,
+//        topLeft = newLeft[0].topLeft,
+//        size = newLeft[0].size,
+//        alpha = .25f,
+//    )
+//    drawRect(
+//        color = Color.Blue,
+//        topLeft = newLeft[1].topLeft,
+//        size = newLeft[1].size,
+//        alpha = .25f,
+//    )
 //
-// fun DrawScope.findEstimate(
-//    left: List<Line>,
-//    top: List<Line>,
-//    right: List<Line>,
-//    bottom: List<Line>,
-// ): Offset {
-//    val leftsIntersections = left.map { it.intersections(top + right + bottom) }
-//    val topsIntersections = top.map { it.intersections(left + right + bottom) }
-//    val rightsIntersections = right.map { it.intersections(top + left + bottom) }
-//    val bottomsIntersections = bottom.map { it.intersections(top + left + right) }
+//    drawRect(
+//        color = Color.Green,
+//        topLeft = newBack[0].topLeft,
+//        size = newBack[0].size,
+//        alpha = .25f,
+//    )
+//    drawRect(
+//        color = Color.Green,
+//        topLeft = newBack[1].topLeft,
+//        size = newBack[1].size,
+//        alpha = .25f,
+//    )
 //
-//    val allIntersections = (leftsIntersections + topsIntersections + rightsIntersections + bottomsIntersections).flatten()
-//
-//    // map to occurance
-//    var maxOccurances = 0
-//    var maxPoint: Offset? = null
-//
-//    allIntersections.filterNotNull().forEach { a ->
-//        val occurances = allIntersections.count { it == a }
-//        if (occurances > maxOccurances) {
-//            maxOccurances = occurances
-//            maxPoint = a
-//        }
-//    }
-//
-//    return maxPoint!!
-// }
+//    drawRect(
+//        color = Color.Yellow,
+//        topLeft = newRight[0].topLeft,
+//        size = newRight[0].size,
+//        alpha = .25f,
+//    )
+//    drawRect(
+//        color = Color.Yellow,
+//        topLeft = newRight[1].topLeft,
+//        size = newRight[1].size,
+//        alpha = .25f,
+//    )
+
+    val overlapsFL = newFront[0].intersections(newLeft) + newFront[1].intersections(newLeft)
+    val overlapsFLB = overlapsFL.map { it.intersections(newBack) }.flatten()
+    val overlapsFLBR = overlapsFLB.map { it.intersections(newRight) }.flatten()
+
+    overlapsFLBR.forEach {
+        drawRect(
+            color = Color.Cyan,
+            topLeft = it.topLeft,
+            size = it.size,
+            alpha = 1f,
+        )
+    }
+
+    val result =
+        if (overlapsFLBR.size > 1) {
+            overlapsFLBR[0].intersections(overlapsFLBR.drop(1)).getOrNull(0)?.center ?: Offset.Zero
+        } else if (overlapsFLBR.size < 0) {
+            println("ERROR ${overlapsFLBR.size}")
+            Offset.Zero
+        } else {
+            overlapsFLBR[0].center
+        }
+
+    return result
+}
 
 fun main() =
     singleWindowApplication(
