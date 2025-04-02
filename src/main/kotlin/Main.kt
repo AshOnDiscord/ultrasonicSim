@@ -341,25 +341,28 @@ fun DrawScope.calculatePose(
     val overlapsFLB = overlapsFL.map { it.intersections(newBack) }.flatten()
     val overlapsFLBR = overlapsFLB.map { it.intersections(newRight) }.flatten()
 
-    overlapsFLBR.forEach {
-        drawRect(
-            color = Color.Cyan,
-            topLeft = it.topLeft,
-            size = it.size,
-            alpha = 1f,
-        )
-    }
-
     val result =
         if (overlapsFLBR.size > 1) {
             overlapsFLBR[0].intersections(overlapsFLBR.drop(1)).getOrNull(0)?.center ?: Offset.Zero
         } else if (overlapsFLBR.isEmpty()) {
-            println("ERROR no intersections")
-            Offset.Zero
+            println("ERROR no intersections, ${overlapsFLB.size}, ${overlapsFL.size}")
+            if (overlapsFLB.isNotEmpty()) {
+                overlapsFLB[0].center
+            } else {
+                overlapsFL[0].center
+            }
         } else {
             overlapsFLBR[0].center
         }
 
+    result.let {
+        drawRect(
+            color = Color.Cyan,
+            topLeft = it - Offset(sensorArea / 2f, sensorArea / 2f),
+            size = Size(sensorArea, sensorArea),
+            alpha = 1f,
+        )
+    }
     return result
 }
 
