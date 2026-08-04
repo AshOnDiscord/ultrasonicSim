@@ -30,7 +30,6 @@ import androidx.compose.ui.window.singleWindowApplication
 import util.LineSegment
 import util.Ray
 import util.Rectangle
-import util.RectangularArea
 import util.angleTo
 import util.coerceIn
 import util.distanceTo
@@ -310,60 +309,113 @@ fun DrawScope.calculatePose(
 
     val newFront =
         possibleFront.map {
-            RectangularArea.fromLineSegment(
-                it.translate(Offset(distances[0], 0f).rotate(180f.toRadians() + theta)),
-                sensorArea,
-            )
+            it.translate(Offset(distances[0], 0f).rotate(180f.toRadians() + theta))
         }
     val newLeft =
         possibleLeft.map {
-            RectangularArea.fromLineSegment(
-                it.translate(Offset(distances[1], 0f).rotate(270f.toRadians() + theta)),
-                sensorArea,
-            )
+            it.translate(Offset(distances[1], 0f).rotate(270f.toRadians() + theta))
         }
     val newBack =
         possibleBack.map {
-            RectangularArea.fromLineSegment(
-                it.translate(Offset(distances[2], 0f).rotate(theta)),
-                sensorArea,
-            )
+            it.translate(Offset(distances[2], 0f).rotate(theta))
         }
     val newRight =
         possibleRight.map {
-            RectangularArea.fromLineSegment(
-                it.translate(Offset(distances[3], 0f).rotate(90f.toRadians() + theta)),
-                sensorArea,
+            it.translate(Offset(distances[3], 0f).rotate(90f.toRadians() + theta))
+        }
+
+    drawLine(
+        color = Color.Red,
+        start = newFront[0].p1,
+        end = newFront[0].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+    drawLine(
+        color = Color.Red,
+        start = newFront[1].p1,
+        end = newFront[1].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+
+    drawLine(
+        color = Color.Blue,
+        start = newLeft[0].p1,
+        end = newLeft[0].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+    drawLine(
+        color = Color.Blue,
+        start = newLeft[1].p1,
+        end = newLeft[1].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+
+    drawLine(
+        color = Color.Green,
+        start = newBack[0].p1,
+        end = newBack[0].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+    drawLine(
+        color = Color.Green,
+        start = newBack[1].p1,
+        end = newBack[1].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+
+    drawLine(
+        color = Color.Yellow,
+        start = newRight[0].p1,
+        end = newRight[0].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+    drawLine(
+        color = Color.Yellow,
+        start = newRight[1].p1,
+        end = newRight[1].p2,
+        strokeWidth = 2f,
+        alpha = .25f,
+    )
+
+    val intersections =
+        (
+            newFront.map { it.intersections(newLeft + newBack + newRight) } +
+                newLeft.map { it.intersections(newFront + newBack + newRight) } +
+                newBack.map { it.intersections(newFront + newLeft + newRight) } +
+                newRight.map { it.intersections(newFront + newLeft + newBack) }
+        ).flatten()
+
+    val countedIntersections =
+        intersections
+            .mapIndexed { index, value ->
+                val others = intersections.drop(index)
+                value to others.count { it.distanceTo(value) < .1f }
+            }.sortedByDescending { it.second }
+
+    val max = countedIntersections.firstOrNull()?.second ?: 0
+    val res = countedIntersections.filter { it.second == max }.map { it.first }
+
+    res.forEach { point ->
+        point.let {
+            drawRect(
+                color = Color.Cyan,
+                topLeft = it - Offset(sensorArea / 2f, sensorArea / 2f),
+                size = Size(sensorArea, sensorArea),
+                alpha = 1f,
             )
+            println(it)
+            println(countedIntersections.map { it.second })
         }
-
-    val overlapsFL = newFront[0].intersections(newLeft) + newFront[1].intersections(newLeft)
-    val overlapsFLB = overlapsFL.map { it.intersections(newBack) }.flatten()
-    val overlapsFLBR = overlapsFLB.map { it.intersections(newRight) }.flatten()
-
-    val result =
-        if (overlapsFLBR.size > 1) {
-            overlapsFLBR[0].intersections(overlapsFLBR.drop(1)).getOrNull(0)?.center ?: Offset.Zero
-        } else if (overlapsFLBR.isEmpty()) {
-            println("ERROR no intersections, ${overlapsFLB.size}, ${overlapsFL.size}")
-            if (overlapsFLB.isNotEmpty()) {
-                overlapsFLB[0].center
-            } else {
-                overlapsFL[0].center
-            }
-        } else {
-            overlapsFLBR[0].center
-        }
-
-    result.let {
-        drawRect(
-            color = Color.Cyan,
-            topLeft = it - Offset(sensorArea / 2f, sensorArea / 2f),
-            size = Size(sensorArea, sensorArea),
-            alpha = 1f,
-        )
     }
-    return result
+
+    return res.firstOrNull() ?: Offset.Zero
 }
 
 fun main() =
